@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block title %}Load Dataset{% endblock %}
+
+{% block content %}
+<h1>Dataset Loading</h1>
+
+{% if error %}
+    <div class="alert alert-error">
+        <strong>Could not load the dataset:</strong> {{ error }}
+    </div>
+{% else %}
+
+<div class="summary-grid">
+    <div class="summary-box">
+        <h3>Dataset</h3>
+        <p class="big-stat">{{ dataset_name }}</p>
+    </div>
+    <div class="summary-box">
+        <h3>Dimensions</h3>
+        <p class="big-stat">{{ n_rows }} <span class="stat-label">rows</span></p>
+        <p class="big-stat">{{ n_cols }} <span class="stat-label">columns</span></p>
+        <p class="hint">Memory usage ≈ {{ memory_kb }} KB</p>
+    </div>
+    <div class="summary-box">
+        <h3>Data quality</h3>
+        <ul>
+            <li>Duplicate rows: <strong>{{ duplicate_count }}</strong></li>
+            <li>Missing values: <strong>{{ missing_counts.values() | sum(attribute='count') }}</strong></li>
+        </ul>
+        {% if missing_counts %}
+        <h4>Missing values by column</h4>
+        <table class="mini-table">
+            <tr><th>Column</th><th>Count</th></tr>
+            {% for col, info in missing_counts.items() %}
+            <tr><td>{{ col }}</td><td>{{ info['count'] }} ({{ info['percent'] }}%)</td></tr>
+            {% endfor %}
+        </table>
+        {% endif %}
+    </div>
+</div>
+
+<div class="summary-grid">
+    <div class="summary-box">
+        <h3>Column data types</h3>
+        <table class="mini-table">
+            <tr><th>Column</th><th>Type</th></tr>
+            {% for col in columns %}
+            <tr><td>{{ col }}</td><td>{{ dtypes[col] }}</td></tr>
+            {% endfor %}
+        </table>
+    </div>
+    <div class="summary-box">
+        <h3>Unique values per column</h3>
+        <table class="mini-table">
+            <tr><th>Column</th><th>Unique</th></tr>
+            {% for col in columns %}
+            <tr><td>{{ col }}</td><td>{{ unique_counts[col] }}</td></tr>
+            {% endfor %}
+        </table>
+    </div>
+</div>
+
+<h2>First 5 rows</h2>
+<div class="table-scroll">
+    <table class="data-table">
+        <thead>
+            <tr>
+                {% for col in columns %}
+                <th>{{ col }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in first_rows %}
+            <tr>
+                {% for col in columns %}
+                <td>{{ row[col] }}</td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<h2>Last 5 rows</h2>
+<div class="table-scroll">
+    <table class="data-table">
+        <thead>
+            <tr>
+                {% for col in columns %}
+                <th>{{ col }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in last_rows %}
+            <tr>
+                {% for col in columns %}
+                <td>{{ row[col] }}</td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% endif %}
+{% endblock %}

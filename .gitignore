@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.pyc
+.flask_sessions/
+trained_models/
+.env
+static/plots/
+static/regression_plots/
+static/ensemble_plots/
+static/analysis_plots/
+static/unsupervised_plots/
+*.log

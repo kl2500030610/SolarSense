@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+
+{% block title %}Model Performance Analysis Results{% endblock %}
+
+{% block content %}
+<h1>Model Performance Analysis Results</h1>
+
+<div class="section">
+    <div class="stat-cards">
+        <div class="stat-card"><span class="stat-value">{{ n_classes }}</span><span class="stat-label">Classification Classes</span></div>
+        <div class="stat-card"><span class="stat-value">{{ regression.best_model }}</span><span class="stat-label">Best Regressor</span></div>
+        <div class="stat-card"><span class="stat-value">{{ classification.best_model }}</span><span class="stat-label">Best Classifier</span></div>
+        <div class="stat-card"><span class="stat-value">{{ split.train + split.val + split.test }}</span><span class="stat-label">Samples Used</span></div>
+    </div>
+</div>
+
+<div class="section">
+    <h2>1. Data Splitting</h2>
+    <p>A stratified <strong>60 / 20 / 20</strong> split was used so the same class
+    proportions are preserved in every partition.</p>
+    <div class="table-scroll">
+        <table class="data-table">
+            <thead><tr><th>Partition</th><th>Samples</th><th>Proportion</th></tr></thead>
+            <tbody>
+                <tr><td>Train</td><td>{{ split.train }}</td><td>60%</td></tr>
+                <tr><td>Validation</td><td>{{ split.val }}</td><td>20%</td></tr>
+                <tr><td>Test</td><td>{{ split.test }}</td><td>20%</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="section">
+    <h2>2. Classification Target (discretised AC_POWER)</h2>
+    <p>The continuous <code>AC_POWER</code> output was converted into
+    <strong>{{ n_classes }} classes</strong> so that classification models could be
+    trained and evaluated alongside the regressors.</p>
+    <div class="table-scroll">
+        <table class="data-table">
+            <thead><tr><th>Class</th><th>Name</th><th>Range (AC_POWER)</th><th>Count</th><th>Share</th></tr></thead>
+            <tbody>
+                {% for i in range(n_classes) %}
+                <tr>
+                    <td>{{ i }}</td>
+                    <td>{{ class_names[i] }}</td>
+                    {% if i == 0 %}
+                    <td>= 0</td>
+                    {% elif i == n_classes - 1 %}
+                    <td>&gt; {{ "%.2f"|format(boundaries[i-1]) }} &ndash; {{ "%.2f"|format(boundaries[i]) }}</td>
+                    {% else %}
+                    <td>{{ "%.2f"|format(boundaries[i-1]) }} &ndash; {{ "%.2f"|format(boundaries[i]) }}</td>
+                    {% endif %}
+                    <td>{{ class_counts[i] }}</td>
+                    <td>{{ class_pct[i] }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="section">
+    <h2>3. Regression — Cross-Validation &amp; Test Metrics</h2>
+    <div class="table-scroll">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Model</th>
+                    <th>CV R² (mean &plusmn; std)</th>
+                    <th>CV RMSE</th>
+                    <th>CV MAE</th>
+                    <th>Test R²</th>
+                    <th>Test Adj R²</th>
+                    <th>Test RMSE</th>
+                    <th>Test MAE</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for name, m in regression.models.items() %}
+                <tr {% if name == regression.best_model %}style="background:#fde8c8;"{% endif %}>
+                    <td><strong>{{ name }}</strong>{% if name == regression.best_model %} &#11088;{% endif %}</td>
+                    <td>{{ m.cv.R2_mean }} &plusmn; {{ m.cv.R2_std }}</td>
+                    <td>{{ m.cv.RMSE_mean }}</td>
+                    <td>{{ m.cv.MAE_mean }}</td>
+                    <td>{{ m.test_metrics.R2 }}</td>
+                    <td>{{ m.test_metrics.Adj_R2 }}</td>
+                    <td>{{ m.test_metrics.RMSE }}</td>
+                    <td>{{ m.test_metrics.MAE }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <p class="hint">CV = {{ 5 }}-fold cross-validation on the training set. &#11088; = best test R².</p>
+</div>
+
+<div class="section">
+    <h2>4. Classification — Cross-Validation &amp; Test Metrics</h2>
+    <div class="table-scroll">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Model</th>
+                    <th>CV Accuracy (mean &plusmn; std)</th>
+                    <th>CV F1</th>
+                    <th>CV ROC-AUC</th>
+                    <th>Test Accuracy</th>
+                    <th>Test Precision</th>
+                    <th>Test Recall</th>
+                    <th>Test F1</th>
+                    <th>Test ROC-AUC</th>
+                    <th>Test PR-AUC</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for name, m in classification.models.items() %}
+                <tr {% if name == classification.best_model %}style="background:#fde8c8;"{% endif %}>
+                    <td><strong>{{ name }}</strong>{% if name == classification.best_model %} &#11088;{% endif %}</td>
+                    <td>{{ m.cv.Accuracy_mean }} &plusmn; {{ m.cv.Accuracy_std }}</td>
+                    <td>{{ m.cv.F1_mean }}</td>
+                    <td>{{ m.cv.ROC_AUC_mean }}</td>
+                    <td>{{ m.test_metrics.Accuracy }}</td>
+                    <td>{{ m.test_metrics.Precision }}</td>
+                    <td>{{ m.test_metrics.Recall }}</td>
+                    <td>{{ m.test_metrics.F1 }}</td>
+                    <td>{{ m.test_metrics.ROC_AUC if m.test_metrics.ROC_AUC is not none else 'n/a' }}</td>
+                    <td>{{ m.test_metrics.PR_AUC if m.test_metrics.PR_AUC is not none else 'n/a' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <p class="hint">Precision / Recall / F1 are macro-weighted over the {{ n_classes }} classes. ROC-AUC uses one-vs-rest.</p>
+</div>
+
+<div class="section">
+    <h2>5. Probability Calibration — {{ classification.best_model }}</h2>
+    <p>Calibration compares how confident a model is (predicted probability) with how
+    often it is actually correct. Lower Brier score / log-loss is better.</p>
+    <div class="table-scroll">
+        <table class="data-table">
+            <thead><tr><th>Variant</th><th>Method</th><th>Brier Score</th><th>Log-Loss</th></tr></thead>
+            <tbody>
+                <tr><td>Uncalibrated</td><td>&mdash;</td><td>{{ calibration.brier }}</td><td>{{ calibration.log_loss }}</td></tr>
+                {% if calibration.calibrated_brier is not none %}
+                <tr><td>Calibrated</td><td>{{ calibration.method }}</td><td>{{ calibration.calibrated_brier }}</td><td>{{ calibration.calibrated_log_loss }}</td></tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="section">
+    <h2>6. Hyperparameter Search — RandomForest Regressor</h2>
+    <p>Three search strategies were compared on a subsample of the training data
+    ({{ 5 }}-fold CV):</p>
+    <div class="table-scroll">
+        <table class="data-table">
+            <thead><tr><th>Strategy</th><th>Candidates</th><th>Best CV R²</th><th>Best Parameters</th></tr></thead>
+            <tbody>
+                <tr>
+                    <td>Grid Search</td>
+                    <td>{{ hyperparameter.grid.n_candidates }}</td>
+                    <td>{{ hyperparameter.grid.best_score }}</td>
+                    <td><code>{{ hyperparameter.grid.best_params }}</code></td>
+                </tr>
+                <tr>
+                    <td>Random Search</td>
+                    <td>{{ hyperparameter.random.n_candidates }}</td>
+                    <td>{{ hyperparameter.random.best_score }}</td>
+                    <td><code>{{ hyperparameter.random.best_params }}</code></td>
+                </tr>
+                <tr>
+                    <td>Bayesian Optimisation</td>
+                    <td>{{ hyperparameter.bayesian.n_candidates }}</td>
+                    <td>{{ hyperparameter.bayesian.best_score }}</td>
+                    <td><code>{{ hyperparameter.bayesian.best_params }}</code></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    {% if hyperparameter.bayesian.history %}
+    <h4>Bayesian optimisation trace</h4>
+    <div class="table-scroll">
+        <table class="mini-table">
+            <thead><tr><th>Iteration</th><th>n_estimators</th><th>max_depth</th><th>CV R²</th></tr></thead>
+            <tbody>
+                {% for h in hyperparameter.bayesian.history %}
+                <tr>
+                    <td>{{ h.iteration }}</td>
+                    <td>{{ h.params[0] }}</td>
+                    <td>{{ h.params[1] if h.params[1] is not none else 'None' }}</td>
+                    <td>{{ h.score }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+</div>
+
+<div class="section">
+    <h2>7. Plots</h2>
+    <div class="chart-grid">
+        {% for p in plots %}
+        <div class="chart-box">
+            <img src="{{ url_for('static', filename='analysis_plots/' + p.file) }}" alt="{{ p.title }}">
+            <div class="chart-caption">{{ p.title }}</div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="section">
+    <h2>8. Key Findings</h2>
+    <ul class="findings-list">
+        {% for finding in findings %}
+        <li>{{ finding | safe }}</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endblock %}

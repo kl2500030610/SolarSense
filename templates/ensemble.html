@@ -1,0 +1,328 @@
+{% extends "base.html" %}
+
+{% block title %}Ensemble Models{% endblock %}
+
+{% block content %}
+<h1>Ensemble Models — Predict AC Power Output</h1>
+<p class="hint">Target variable: <strong>AC_POWER</strong> (AC power output in kW).
+Trained on <strong>{{ train_size + test_size }}</strong> samples from <strong>{{ dataset_name }}</strong>.</p>
+
+{% if error %}
+    <div class="alert alert-error">
+        <strong>Could not run ensemble models:</strong> {{ error }}
+    </div>
+{% else %}
+
+<!-- ===================== 1. Overview ===================== -->
+<section class="section">
+    <h2>1. Dataset Overview</h2>
+    <div class="stat-cards">
+        <div class="stat-card"><span class="stat-value">{{ target }}</span><span class="stat-label">Target Variable</span></div>
+        <div class="stat-card"><span class="stat-value">{{ n_features }}</span><span class="stat-label">Features</span></div>
+        <div class="stat-card"><span class="stat-value">{{ train_size + test_size }}</span><span class="stat-label">Total Samples</span></div>
+        <div class="stat-card"><span class="stat-value">{{ best_model }}</span><span class="stat-label">Best Model</span></div>
+    </div>
+    <div class="summary-grid">
+        <div class="summary-box">
+            <h3>Target Variable</h3>
+            <table class="mini-table">
+                <tr><th>Property</th><th>Value</th></tr>
+                <tr><td>Name</td><td>AC_POWER</td></tr>
+                <tr><td>Description</td><td>AC power output of the solar plant (kW)</td></tr>
+                <tr><td>Rationale</td><td>Natural dependent variable — the quantity a solar plant operator wants to predict from environmental conditions.</td></tr>
+            </table>
+        </div>
+        <div class="summary-box">
+            <h3>Feature Columns</h3>
+            <table class="mini-table">
+                <tr><th>Feature</th><th>Type</th></tr>
+                {% for feat in features %}
+                <tr><td>{{ feat }}</td><td>{% if 'PLANT_ID' in feat %}categorical (one-hot){% else %}numeric{% endif %}</td></tr>
+                {% endfor %}
+            </table>
+        </div>
+    </div>
+</section>
+
+<!-- ===================== 2. Feature Selection ===================== -->
+<section class="section">
+    <h2>2. Feature Selection & Leakage Prevention</h2>
+    <div class="summary-grid">
+        <div class="summary-box">
+            <h3>Included Features</h3>
+            <ul>
+                <li><strong>IRRADIATION</strong> — Solar irradiation (W/m²). Primary driver of power generation; directly determines panel output.</li>
+                <li><strong>MODULE_TEMPERATURE</strong> — Panel surface temperature (°C). Affects cell efficiency; strongly correlated with irradiation.</li>
+                <li><strong>AMBIENT_TEMPERATURE</strong> — Air temperature (°C). Influences module temperature and overall plant performance.</li>
+                <li><strong>PLANT_ID</strong> — Which of the two solar plants (one-hot encoded). Accounts for systematic differences in plant design.</li>
+            </ul>
+        </div>
+        <div class="summary-box">
+            <h3>Dropped Columns (Leakage Avoidance)</h3>
+            <ul>
+                <li><strong>DC_POWER</strong> — Near-perfect correlate of AC_POWER within each plant. Using it would leak the target.</li>
+                <li><strong>DAILY_YIELD</strong> — Daily accumulated AC_POWER. Derived from the target, not available at prediction time.</li>
+                <li><strong>TOTAL_YIELD</strong> — Lifetime cumulative yield. Not a predictive feature; encodes historical information.</li>
+                <li><strong>SOURCE_KEY</strong> — 44 individual inverters. Too many for one-hot encoding; not needed for a general prediction form.</li>
+                <li><strong>SENSOR_KEY</strong> — Only 2 values, redundant with PLANT_ID.</li>
+                <li><strong>DATE_TIME</strong> — Night/day cycle already captured by IRRADIATION (zero irradiation at night → zero power).</li>
+            </ul>
+        </div>
+    </div>
+</section>
+
+<!-- ===================== 3. Data Preprocessing ===================== -->
+<section class="section">
+    <h2>3. Data Preprocessing</h2>
+    <div class="summary-grid">
+        <div class="summary-box">
+            <h3>Preprocessing Pipeline (sklearn ColumnTransformer)</h3>
+            <table class="mini-table">
+                <tr><th>Transformer</th><th>Columns</th><th>Method</th></tr>
+                <tr><td>Numeric</td><td>IRRADIATION, MODULE_TEMPERATURE, AMBIENT_TEMPERATURE</td><td>StandardScaler (zero-mean, unit-variance)</td></tr>
+                <tr><td>Categorical</td><td>PLANT_ID</td><td>OneHotEncoder (drop='first', handle_unknown='ignore')</td></tr>
+            </table>
+        </div>
+        <div class="summary-box">
+            <h3>Train / Test Split</h3>
+            <table class="mini-table">
+                <tr><th>Set</th><th>Samples</th><th>Proportion</th></tr>
+                <tr><td>Train</td><td>{{ "{:,}".format(train_size) }}</td><td>80%</td></tr>
+                <tr><td>Test</td><td>{{ "{:,}".format(test_size) }}</td><td>20%</td></tr>
+            </table>
+            <p class="hint" style="margin-top:0.5rem;">Random split with <code>random_state=42</code> for reproducibility.</p>
+        </div>
+    </div>
+</section>
+
+<!-- ===================== 4. Models Trained ===================== -->
+<section class="section">
+    <h2>4. Ensemble Models Trained</h2>
+    <div class="summary-grid">
+        <div class="summary-box">
+            <h3>RandomForest</h3>
+            <p class="hint">Ensemble of 100 decision trees, max depth 15, min 5 samples per leaf. Captures non-linear relationships and feature interactions.</p>
+        </div>
+        <div class="summary-box">
+            <h3>DecisionTree</h3>
+            <p class="hint">Single decision tree, max depth 15, min 5 samples per leaf. Simple, interpretable baseline for tree-based methods.</p>
+        </div>
+        <div class="summary-box">
+            <h3>AdaBoost</h3>
+            <p class="hint">Adaptive Boosting with 100 weak learners (decision stumps, max_depth=5). Sequentially corrects errors of previous models.</p>
+        </div>
+        {% if xgboost_available %}
+        <div class="summary-box">
+            <h3>XGBoost</h3>
+            <p class="hint">Extreme Gradient Boosting with 100 estimators, max depth 6, learning rate 0.1. Highly optimized gradient boosting.</p>
+        </div>
+        {% else %}
+        <div class="summary-box" style="opacity: 0.6;">
+            <h3>XGBoost</h3>
+            <p class="hint" style="color: #b3261e;">Not available — install <code>xgboost</code> package to enable.</p>
+        </div>
+        {% endif %}
+    </div>
+</section>
+
+<!-- ===================== 5. Model Comparison Table ===================== -->
+<section class="section">
+    <h2>5. Model Comparison — Metrics</h2>
+    <div class="table-scroll">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Model</th><th>MAE</th><th>MSE</th><th>RMSE</th><th>R²</th><th>Adj. R²</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for name, info in models.items() %}
+                <tr>
+                    <td><strong>{{ name }}</strong>{% if name == best_model %} ⭐{% endif %}</td>
+                    <td>{{ info.metrics.MAE }}</td>
+                    <td>{{ info.metrics.MSE }}</td>
+                    <td>{{ info.metrics.RMSE }}</td>
+                    <td>{{ info.metrics.R2 }}</td>
+                    <td>{{ info.metrics.Adj_R2 }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <p class="hint">MAE = Mean Absolute Error. MSE = Mean Squared Error. RMSE = Root MSE.
+    R² = coefficient of determination (1.0 = perfect). ⭐ = best model by R².</p>
+</section>
+
+<!-- ===================== 6. Model Comparison Charts ===================== -->
+<section class="section">
+    <h2>6. Model Comparison — Charts</h2>
+    <div class="chart-grid">
+        {% for p in plots if p.title == "Model Comparison (MAE / RMSE / R²)" %}
+        <div class="chart-box">
+            <img src="{{ url_for('static', filename='ensemble_plots/' ~ p.file) }}" alt="{{ p.title }}">
+            <p class="chart-caption">{{ p.title }}</p>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+
+<!-- ===================== 7. Actual vs Predicted ===================== -->
+<section class="section">
+    <h2>7. Actual vs Predicted</h2>
+    <p class="hint">Each point is a test-set sample. The dashed line is the ideal (actual = predicted).
+    Points close to the diagonal indicate accurate predictions.</p>
+    <div class="chart-grid">
+        {% for p in plots if "Actual vs Predicted" in p.title %}
+        <div class="chart-box">
+            <img src="{{ url_for('static', filename='ensemble_plots/' ~ p.file) }}" alt="{{ p.title }}">
+            <p class="chart-caption">{{ p.title }}</p>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+
+<!-- ===================== 8. Residuals Distribution ===================== -->
+<section class="section">
+    <h2>8. Residuals Distribution</h2>
+    <p class="hint">Residual = Actual − Predicted. A well-calibrated model produces residuals
+    centred at zero with a roughly symmetric, bell-shaped distribution.</p>
+    <div class="chart-grid">
+        {% for p in plots if "Residuals" in p.title %}
+        <div class="chart-box">
+            <img src="{{ url_for('static', filename='ensemble_plots/' ~ p.file) }}" alt="{{ p.title }}">
+            <p class="chart-caption">{{ p.title }}</p>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+
+<!-- ===================== 9. Feature Importance ===================== -->
+<section class="section">
+    <h2>9. Feature Importance — {{ best_model }}</h2>
+    <p class="hint">Gini-based feature importance from the best tree ensemble. Higher values indicate
+    features that contribute more to the model's splitting decisions.</p>
+    <div class="chart-grid">
+        {% for p in plots if "Feature Importance" in p.title %}
+        <div class="chart-box">
+            <img src="{{ url_for('static', filename='ensemble_plots/' ~ p.file) }}" alt="{{ p.title }}">
+            <p class="chart-caption">{{ p.title }}</p>
+        </div>
+        {% endfor %}
+    </div>
+    {% if feature_importances %}
+    <div class="table-scroll">
+        <table class="data-table">
+            <thead><tr><th>Feature</th><th>Importance</th></tr></thead>
+            <tbody>
+                {% for feat, imp in feature_importances.items() %}
+                <tr><td>{{ feat }}</td><td>{{ "%.4f" | format(imp) }}</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+</section>
+
+<!-- ===================== 10. Key Findings ===================== -->
+<section class="section">
+    <h2>10. Key Findings</h2>
+    <ul class="findings-list">
+        {% for finding in findings %}
+        <li>{{ finding | safe }}</li>
+        {% endfor %}
+    </ul>
+</section>
+
+<!-- ===================== 11. Prediction Interface ===================== -->
+<section class="section">
+    <h2>11. Predict AC Power Output</h2>
+    <p class="hint">Enter environmental conditions to predict AC power output using the best trained model ({{ best_model }}).</p>
+
+    <div class="summary-grid">
+        <div class="summary-box">
+            <h3>Input Parameters</h3>
+            <form id="predict-form" onsubmit="return false;">
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; margin-top: 0.8rem;">
+                    <div>
+                        <label style="display:block; font-weight:600; margin-bottom:0.3rem; font-size:0.9rem;">Plant ID</label>
+                        <select id="plant_id" style="width:100%; padding:0.5rem; border:1px solid #e5e7eb; border-radius:6px; font-size:0.9rem;">
+                            {% for pid in plant_ids %}
+                            <option value="{{ pid }}">{{ pid }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label style="display:block; font-weight:600; margin-bottom:0.3rem; font-size:0.9rem;">Ambient Temperature (°C)</label>
+                        <input type="number" id="ambient_temperature" step="0.1" value="25.0"
+                               style="width:100%; padding:0.5rem; border:1px solid #e5e7eb; border-radius:6px; font-size:0.9rem;">
+                    </div>
+                    <div>
+                        <label style="display:block; font-weight:600; margin-bottom:0.3rem; font-size:0.9rem;">Module Temperature (°C)</label>
+                        <input type="number" id="module_temperature" step="0.1" value="30.0"
+                               style="width:100%; padding:0.5rem; border:1px solid #e5e7eb; border-radius:6px; font-size:0.9rem;">
+                    </div>
+                    <div>
+                        <label style="display:block; font-weight:600; margin-bottom:0.3rem; font-size:0.9rem;">Irradiation (W/m²)</label>
+                        <input type="number" id="irradiation" step="0.01" value="0.5"
+                               style="width:100%; padding:0.5rem; border:1px solid #e5e7eb; border-radius:6px; font-size:0.9rem;">
+                    </div>
+                </div>
+                <button type="button" id="predict-btn" onclick="makePrediction()"
+                        style="margin-top:1rem; padding:0.7rem 2rem; background:#c96f11; color:white; border:none; border-radius:8px; font-weight:600; cursor:pointer; font-size:1rem;">
+                    Predict
+                </button>
+            </form>
+        </div>
+
+        <div class="summary-box" id="prediction-result" style="display:flex; align-items:center; justify-content:center; flex-direction:column;">
+            <h3>Prediction</h3>
+            <p id="pred-value" style="font-size:2rem; font-weight:700; color:#c96f11; margin:0.5rem 0;">—</p>
+            <p id="pred-unit" class="hint">AC_POWER (kW)</p>
+            <p id="pred-error" class="hint" style="color:#b3261e; display:none;"></p>
+        </div>
+    </div>
+</section>
+
+<script>
+async function makePrediction() {
+    const btn = document.getElementById('predict-btn');
+    const predValue = document.getElementById('pred-value');
+    const predError = document.getElementById('pred-error');
+
+    btn.disabled = true;
+    btn.textContent = 'Predicting...';
+    predError.style.display = 'none';
+    predValue.textContent = '—';
+
+    const payload = {
+        plant_id: document.getElementById('plant_id').value,
+        ambient_temperature: parseFloat(document.getElementById('ambient_temperature').value),
+        module_temperature: parseFloat(document.getElementById('module_temperature').value),
+        irradiation: parseFloat(document.getElementById('irradiation').value),
+    };
+
+    try {
+        const resp = await fetch('/predict_ensemble', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+        const data = await resp.json();
+        if (data.status === 'ok') {
+            predValue.textContent = data.prediction.toFixed(4);
+        } else {
+            predError.textContent = data.message || 'Prediction failed.';
+            predError.style.display = 'block';
+        }
+    } catch (e) {
+        predError.textContent = 'Network error: ' + e.message;
+        predError.style.display = 'block';
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Predict';
+}
+</script>
+
+{% endif %}
+{% endblock %}

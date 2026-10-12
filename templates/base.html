@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Solar EDA{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">☀️ SolarSense EDA</div>
+        <ul class="nav-links">
+            <li><a href="{{ url_for('index') }}">Home</a></li>
+            <li><a href="{{ url_for('load_page') }}">Load Dataset</a></li>
+            <li><a href="{{ url_for('eda_page') }}">EDA</a></li>
+            <li><a href="{{ url_for('regression_page') }}">Regression</a></li>
+            <li><a href="{{ url_for('ensemble_page') }}">Ensemble</a></li>
+            <li><a href="{{ url_for('unsupervised_page') }}">Unsupervised</a></li>
+            <li><a href="{{ url_for('model_analysis_page') }}">Model Analysis</a></li>
+        </ul>
+    </nav>
+
+    <main class="content">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer">
+        <p>Solar Power Plant EDA &mdash; Flask / Pandas project</p>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}Home{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <h1>Solar Power Plant Exploratory Data Analysis</h1>
+    <p>
+        A web dashboard that loads the <strong>{{ dataset_name }}</strong> dataset,
+        inspects its structure, and performs a complete exploratory data analysis
+        with statistics and visualisations.
+    </p>
+</section>
+
+<section class="card-grid">
+    <a class="card" href="{{ url_for('load_page') }}">
+        <h2>📥 Load Dataset</h2>
+        <p>Load the combined solar dataset, inspect its shape, columns, data
+        types, missing values and a preview of the rows.</p>
+    </a>
+
+    <a class="card" href="{{ url_for('eda_page') }}">
+        <h2>📊 Perform EDA</h2>
+        <p>Descriptive statistics, missing & duplicate analysis, numerical
+        and categorical analysis, correlations, outliers and key findings.</p>
+    </a>
+
+    <a class="card" href="{{ url_for('regression_page') }}">
+        <h2>📈 Regression</h2>
+        <p>Supervised regression to predict AC power output using environmental
+        conditions and plant ID. Model training, evaluation, and live prediction.</p>
+    </a>
+
+    <a class="card" href="{{ url_for('ensemble_page') }}">
+        <h2>🌲 Ensemble Models</h2>
+        <p>Tree-based ensemble methods: RandomForest, XGBoost, DecisionTree,
+        and AdaBoost. Model comparison, feature importance, and live prediction.</p>
+    </a>
+
+    <a class="card" href="{{ url_for('unsupervised_page') }}">
+        <h2>🔍 Unsupervised Learning</h2>
+        <p>Discover hidden structure: K-Means, hierarchical and DBSCAN
+        clustering, PCA / t-SNE / UMAP dimensionality reduction, and
+        Isolation Forest anomaly detection.</p>
+    </a>
+
+    <a class="card" href="{{ url_for('model_analysis_page') }}">
+        <h2>📐 Model Analysis</h2>
+        <p>Cross-validation, train/validation/test splits, regression and
+        classification metrics, probability calibration, and hyperparameter
+        search (grid, random, Bayesian).</p>
+    </a>
+</section>
+
+<section class="dataset-note">
+    <h3>About the dataset</h3>
+    <p>
+        <strong>{{ dataset_name }}</strong> consists of four CSV files
+        (generation and weather-sensor records for two solar plants). The
+        records are sampled every 15 minutes between May 2020 and June 2020.
+        Generation data includes per-inverter DC/AC power output and yield
+        counters; weather data includes ambient/module temperature and
+        irradiation. The web app combines all four files into a single
+        analysis-ready dataset.
+    </p>
+</section>
+{% endblock %}

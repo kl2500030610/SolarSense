@@ -1,0 +1,325 @@
+{% extends "base.html" %}
+
+{% block title %}Unsupervised Learning Results{% endblock %}
+
+{% block content %}
+<h1>Unsupervised Learning Results</h1>
+
+<div class="section">
+    <div class="stat-cards">
+        <div class="stat-card"><span class="stat-value">{{ clustering.kmeans.n_clusters }}</span><span class="stat-label">K-Means Clusters</span></div>
+        <div class="stat-card"><span class="stat-value">{{ clustering.dbscan.n_clusters }}</span><span class="stat-label">DBSCAN Clusters</span></div>
+        <div class="stat-card"><span class="stat-value">{{ anomaly.isolation_forest.n_anomalies }}</span><span class="stat-label">Anomalies (IF)</span></div>
+        <div class="stat-card"><span class="stat-value">{{ dr.pca.n_components_95pct }}</span><span class="stat-label">PCA 95% Components</span></div>
+    </div>
+</div>
+
+<div class="section" style="margin-top: 2rem;">
+    <h3>Clustering Comparison</h3>
+    <div class="table-scroll">
+        <table class="data-table">
+            <thead>
+                <tr><th>Method</th><th>Clusters</th><th>Noise %</th><th>Silhouette</th><th>Davies-Bouldin</th><th>Calinski-Harabasz</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>K-Means (k={{ clustering.kmeans.recommended_k }})</td>
+                    <td>{{ clustering.kmeans.n_clusters }}</td>
+                    <td>{{ clustering.kmeans.n_noise_pct }}%</td>
+                    <td>{{ clustering.kmeans.silhouette if clustering.kmeans.silhouette is not none else 'n/a' }}</td>
+                    <td>{{ clustering.kmeans.davies_bouldin if clustering.kmeans.davies_bouldin is not none else 'n/a' }}</td>
+                    <td>{{ clustering.kmeans.calinski_harabasz if clustering.kmeans.calinski_harabasz is not none else 'n/a' }}</td>
+                </tr>
+                <tr>
+                    <td>Hierarchical</td>
+                    <td>{{ clustering.hierarchical.n_clusters }}</td>
+                    <td>{{ clustering.hierarchical.n_noise_pct }}%</td>
+                    <td>{{ clustering.hierarchical.silhouette if clustering.hierarchical.silhouette is not none else 'n/a' }}</td>
+                    <td>{{ clustering.hierarchical.davies_bouldin if clustering.hierarchical.davies_bouldin is not none else 'n/a' }}</td>
+                    <td>{{ clustering.hierarchical.calinski_harabasz if clustering.hierarchical.calinski_harabasz is not none else 'n/a' }}</td>
+                </tr>
+                <tr>
+                    <td>DBSCAN</td>
+                    <td>{{ clustering.dbscan.n_clusters }}</td>
+                    <td>{{ clustering.dbscan.n_noise_pct }}%</td>
+                    <td>{{ clustering.dbscan.silhouette if clustering.dbscan.silhouette is not none else 'n/a' }}</td>
+                    <td>{{ clustering.dbscan.davies_bouldin if clustering.dbscan.davies_bouldin is not none else 'n/a' }}</td>
+                    <td>{{ clustering.dbscan.calinski_harabasz if clustering.dbscan.calinski_harabasz is not none else 'n/a' }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <p class="hint">DBSCAN parameters: eps = {{ clustering.dbscan.eps }}, min_samples = {{ clustering.dbscan.min_samples }} (tuned via k-distance graph)</p>
+</div>
+
+<div class="section" style="margin-top: 2rem;">
+    <h3>1. Elbow Method — Optimal k</h3>
+    <p class="hint">Inertia computed for k = 1–10. The recommended k is selected by finding the point of maximum curvature (the "elbow").</p>
+    <div class="chart-grid">
+        <div class="chart-box">
+            <img src="{{ url_for('static', filename='unsupervised_plots/' + clustering.elbow.plot.file) }}" alt="Elbow Method">
+            <div class="chart-caption">Elbow Method — Recommended k = {{ clustering.elbow.recommended_k }}</div>
+        </div>
+    </div>
+    <div class="table-scroll">
+        <table class="mini-table">
+            <thead><tr><th>k</th><th>Inertia</th></tr></thead>
+            <tbody>
+                {% for k in clustering.elbow.k_values %}
+                <tr>
+                    <td><strong>{{ k }}</strong>{% if k == clustering.elbow.recommended_k %} &#128073;{% endif %}</td>
+                    <td>{{ "{:,.2f}".format(clustering.elbow.inertias[loop.index0]) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="section" style="margin-top: 2rem;">
+    <h3>2. Cluster Analysis (K-Means)</h3>
+
+    <h4>Cluster Size Distribution</h4>
+    <div class="chart-grid">
+        <div class="chart-box">
+            <img src="{{ url_for('static', filename='unsupervised_plots/' + cluster_analysis.plot.file) }}" alt="Cluster Distribution">
+            <div class="chart-caption">Cluster Size Distribution</div>
+        </div>
+    </div>
+    <div class="table-scroll">
+        <table class="mini-table">
+            <thead><tr><th>Cluster</th><th>Count</th><th>Percentage</th></tr></thead>
+            <tbody>
+                {% for row in cluster_analysis.distribution %}
+                <tr>
+                    <td>{{ row.cluster }}</td>
+                    <td>{{ row.count }}</td>
+                    <td>{{ row.pct }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <h4>Cluster Centers (Original Scale)</h4>
+    <div class="table-scroll">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Cluster</th>
+                    <th>Count</th>
+                    <th>IRRADIATION</th>
+                    <th>MODULE_TEMP</th>
+                    <th>AMBIENT_TEMP</th>
+                    <th>DC_POWER</th>
+                    <th>AC_POWER</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in cluster_analysis.centers %}
+                <tr>
+                    <td>{{ c.cluster }}</td>
+                    <td>{{ c.count }}</td>
+                    <td>{{ c.IRRADIATION }}</td>
+                    <td>{{ c.MODULE_TEMPERATURE }}</td>
+                    <td>{{ c.AMBIENT_TEMPERATURE }}</td>
+                    <td>{{ c.DC_POWER }}</td>
+                    <td>{{ c.AC_POWER }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <h4>Sample Assignments (First 10)</h4>
+    <div class="table-scroll">
+        <table class="mini-table">
+            <thead><tr><th>Sample</th><th>Cluster</th><th>IRRADIATION</th><th>MODULE_TEMP</th><th>AMBIENT_TEMP</th><th>DC_POWER</th><th>AC_POWER</th></tr></thead>
+            <tbody>
+                {% for a in cluster_analysis.assignments %}
+                <tr>
+                    <td>{{ a.sample_idx }}</td>
+                    <td>{{ a.cluster }}</td>
+                    <td>{{ a.IRRADIATION }}</td>
+                    <td>{{ a.MODULE_TEMPERATURE }}</td>
+                    <td>{{ a.AMBIENT_TEMPERATURE }}</td>
+                    <td>{{ a.DC_POWER }}</td>
+                    <td>{{ a.AC_POWER }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="section" style="margin-top: 2rem;">
+    <h3>3. Silhouette Analysis</h3>
+    <p class="hint">Silhouette score ranges from -1 (worst) to +1 (best). Higher values indicate better-defined clusters.</p>
+    <div class="chart-grid">
+        <div class="chart-box">
+            <img src="{{ url_for('static', filename='unsupervised_plots/' + clustering.silhouette_comparison.plot.file) }}" alt="Silhouette Comparison">
+            <div class="chart-caption">Silhouette Score by Method</div>
+        </div>
+    </div>
+    <div class="table-scroll">
+        <table class="mini-table">
+            <thead><tr><th>Method</th><th>Silhouette Score</th></tr></thead>
+            <tbody>
+                {% for m in clustering.silhouette_comparison.methods %}
+                <tr>
+                    <td>{{ m }}</td>
+                    <td>{{ clustering.silhouette_comparison.scores[loop.index0] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="section" style="margin-top: 2rem;">
+    <h3>4. DBSCAN Parameter Tuning</h3>
+    <p class="hint">The k-distance graph plots the distance to the k-th nearest neighbor for each point. The "elbow" in this curve indicates the optimal eps value.</p>
+    <div class="chart-grid">
+        <div class="chart-box">
+            <img src="{{ url_for('static', filename='unsupervised_plots/' + clustering.dbscan.kdist_plot.file if clustering.dbscan.kdist_plot is defined else '') }}" alt="K-Distance Graph">
+            <div class="chart-caption">K-Distance Graph — eps = {{ clustering.dbscan.eps }}</div>
+        </div>
+    </div>
+    <div class="table-scroll">
+        <table class="mini-table">
+            <thead><tr><th>Parameter</th><th>Value</th><th>Description</th></tr></thead>
+            <tbody>
+                <tr><td>eps</td><td>{{ clustering.dbscan.eps }}</td><td>Maximum distance between two samples for neighborhood</td></tr>
+                <tr><td>min_samples</td><td>{{ clustering.dbscan.min_samples }}</td><td>Minimum number of samples in a neighborhood to form a core point</td></tr>
+                <tr><td>Clusters found</td><td>{{ clustering.dbscan.n_clusters }}</td><td>Number of density-based clusters identified</td></tr>
+                <tr><td>Noise points</td><td>{{ clustering.dbscan.n_noise_pct }}%</td><td>Percentage of points classified as noise</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="section" style="margin-top: 2rem;">
+    <h3>5. PCA Loadings</h3>
+    <p class="hint">Feature loadings show how much each original feature contributes to each principal component.</p>
+    <div class="chart-grid">
+        <div class="chart-box">
+            <img src="{{ url_for('static', filename='unsupervised_plots/' + pca_loadings_plot.file if pca_loadings_plot is defined else '') }}" alt="PCA Loadings Heatmap">
+            <div class="chart-caption">PCA Feature Loadings Heatmap</div>
+        </div>
+    </div>
+    <div class="table-scroll">
+        <table class="data-table">
+            <thead><tr><th>PC</th><th>Feature</th><th>Loading</th></tr></thead>
+            <tbody>
+                {% for row in pca_loadings_table %}
+                <tr>
+                    <td>{{ row.pc }}</td>
+                    <td>{{ row.feature }}</td>
+                    <td style="color: {% if row.loading > 0 %}#c96f11{% else %}#2e86ab{% endif %}; font-weight:600;">{{ row.loading }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="section" style="margin-top: 2rem;">
+    <h3>6. Anomaly Detection</h3>
+
+    <h4>Isolation Forest</h4>
+    <div class="stat-cards">
+        <div class="stat-card"><span class="stat-value">{{ anomaly.isolation_forest.n_anomalies }}</span><span class="stat-label">Anomalies Detected</span></div>
+        <div class="stat-card"><span class="stat-value">{{ anomaly.isolation_forest.pct_anomalies }}%</span><span class="stat-label">Contamination Rate</span></div>
+        <div class="stat-card"><span class="stat-value">{{ anomaly.isolation_forest.n_normal }}</span><span class="stat-label">Normal Records</span></div>
+    </div>
+    <div class="chart-grid">
+        <div class="chart-box">
+            <img src="{{ url_for('static', filename='unsupervised_plots/' + anomaly.isolation_forest.score_plot.file) }}" alt="Anomaly Scores">
+            <div class="chart-caption">{{ anomaly.isolation_forest.score_plot.title }}</div>
+        </div>
+        <div class="chart-box">
+            <img src="{{ url_for('static', filename='unsupervised_plots/' + anomaly.isolation_forest.scatter_plot.file) }}" alt="Isolation Forest Scatter">
+            <div class="chart-caption">{{ anomaly.isolation_forest.scatter_plot.title }}</div>
+        </div>
+    </div>
+
+    <h4>Top 10 Anomalies</h4>
+    <div class="table-scroll">
+        <table class="data-table">
+            <thead><tr><th>Index</th><th>Score</th><th>IRRADIATION</th><th>MODULE_TEMP</th><th>AMBIENT_TEMP</th><th>DC_POWER</th><th>AC_POWER</th></tr></thead>
+            <tbody>
+                {% for a in anomaly.isolation_forest.top_anomalies %}
+                <tr>
+                    <td>{{ a.index }}</td>
+                    <td style="color:#b3261e; font-weight:600;">{{ a.score }}</td>
+                    <td>{{ a.IRRADIATION }}</td>
+                    <td>{{ a.MODULE_TEMPERATURE }}</td>
+                    <td>{{ a.AMBIENT_TEMPERATURE }}</td>
+                    <td>{{ a.DC_POWER }}</td>
+                    <td>{{ a.AC_POWER }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <h4>One-Class SVM</h4>
+    <div class="stat-cards">
+        <div class="stat-card"><span class="stat-value">{{ anomaly.one_class_svm.n_anomalies }}</span><span class="stat-label">Anomalies Detected</span></div>
+        <div class="stat-card"><span class="stat-value">{{ anomaly.one_class_svm.pct_anomalies }}%</span><span class="stat-label">Contamination Rate</span></div>
+        <div class="stat-card"><span class="stat-value">{{ anomaly.one_class_svm.n_normal }}</span><span class="stat-label">Normal Records</span></div>
+    </div>
+    <div class="chart-grid">
+        <div class="chart-box">
+            <img src="{{ url_for('static', filename='unsupervised_plots/' + anomaly.one_class_svm.scatter_plot.file) }}" alt="One-Class SVM">
+            <div class="chart-caption">{{ anomaly.one_class_svm.scatter_plot.title }}</div>
+        </div>
+    </div>
+</div>
+
+<div class="section" style="margin-top: 2rem;">
+    <h3>7. Plots Overview</h3>
+    <div class="chart-grid">
+        {% for p in plots %}
+        <div class="chart-box">
+            <img src="{{ url_for('static', filename='unsupervised_plots/' + p.file) }}" alt="{{ p.title }}">
+            <div class="chart-caption">{{ p.title }}</div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="section" style="margin-top: 2rem;">
+    <h3>8. Methodology</h3>
+
+    <h4>Preprocessing</h4>
+    <ul class="findings-list">
+        {% for step in methodology.preprocessing %}
+        <li>{{ step }}</li>
+        {% endfor %}
+    </ul>
+
+    <h4>Parameters</h4>
+    <ul class="findings-list">
+        {% for param in methodology.parameters %}
+        <li>{{ param }}</li>
+        {% endfor %}
+    </ul>
+
+    <h4>Limitations</h4>
+    <ul class="findings-list">
+        {% for lim in methodology.limitations %}
+        <li>{{ lim }}</li>
+        {% endfor %}
+    </ul>
+</div>
+
+<div class="section" style="margin-top: 2rem;">
+    <h3>9. Key Findings</h3>
+    <ul class="findings-list">
+        {% for finding in findings %}
+        <li>{{ finding | safe }}</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endblock %}

@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}Model Performance Analysis{% endblock %}
+
+{% block content %}
+<h1>Model Performance Analysis — Cross-Validation, Metrics & Tuning</h1>
+
+<div class="alert" style="background:#fff3cd; border-color:#ffeeba; color:#856404;">
+    <strong>Click below to run a full model performance analysis.</strong>
+    This trains regression and classification models, performs k-fold
+    cross-validation, computes evaluation metrics, analyses probability
+    calibration and searches for the best hyperparameters.
+</div>
+
+<div style="margin: 2rem 0;">
+    <button id="run-btn"
+            style="padding: 0.75rem 1.5rem; background:#c96f11; color:white; border:none; border-radius:8px; font-weight:600; cursor:pointer; font-size:1rem;"
+            onclick="runAnalysis()">
+        Run Model Analysis
+    </button>
+</div>
+
+<div id="status" style="margin-top: 1rem; font-size: 0.9rem; color: #666;"></div>
+
+<script>
+async function runAnalysis() {
+    const btn = document.getElementById('run-btn');
+    const status = document.getElementById('status');
+    btn.disabled = true;
+    btn.textContent = 'Analyzing...';
+    status.innerHTML = 'Running model analysis... (this may take 1-3 minutes)';
+
+    try {
+        const resp = await fetch('/model_analysis/run', { method: 'POST' });
+        const data = await resp.json();
+        if (resp.ok && data.redirect) {
+            window.location.href = data.redirect;
+        } else {
+            status.innerHTML = 'Error: ' + (data.message || 'Unknown error');
+        }
+    } catch (e) {
+        status.innerHTML = 'Network error: ' + e.message;
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Run Model Analysis';
+}
+</script>
+{% endblock %}

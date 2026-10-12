@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}Unsupervised Learning{% endblock %}
+
+{% block content %}
+<h1>Unsupervised Learning — Discovering Structure in the Data</h1>
+
+<div class="alert alert-error" style="background:#fff3cd; border-color:#ffeeba; color:#856404;">
+    <strong>Click below to discover structure in the data using unsupervised learning techniques.</strong>
+</div>
+
+<div style="margin: 2rem 0;">
+    <button id="run-btn"
+            style="padding: 0.75rem 1.5rem; background:#c96f11; color:white; border:none; border-radius:8px; font-weight:600; cursor:pointer; font-size:1rem;"
+            onclick="runUnsupervised()">
+        Run Unsupervised Analysis
+    </button>
+</div>
+
+<div id="status" style="margin-top: 1rem; font-size: 0.9rem; color: #666;"></div>
+
+<script>
+async function runUnsupervised() {
+    const btn = document.getElementById('run-btn');
+    const status = document.getElementById('status');
+    btn.disabled = true;
+    btn.textContent = 'Analyzing...';
+    status.innerHTML = 'Running unsupervised analysis... (this may take 1-2 minutes)';
+
+    try {
+        const resp = await fetch('/unsupervised/run', { method: 'POST' });
+        const data = await resp.json();
+        if (resp.ok && data.redirect) {
+            window.location.href = data.redirect;
+        } else {
+            status.innerHTML = 'Error: ' + (data.message || 'Unknown error');
+        }
+    } catch (e) {
+        status.innerHTML = 'Network error: ' + e.message;
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Run Unsupervised Analysis';
+}
+</script>
+{% endblock %}

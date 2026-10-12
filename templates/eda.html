@@ -1,0 +1,278 @@
+{% extends "base.html" %}
+
+{% block title %}EDA{% endblock %}
+
+{% block content %}
+<h1>Exploratory Data Analysis</h1>
+<p class="hint">Complete EDA of <strong>{{ dataset_name }}</strong>.
+All statistics and plots are computed from the actual dataset at page load.</p>
+
+{% if error %}
+    <div class="alert alert-error">
+        <strong>Could not run EDA:</strong> {{ error }}
+    </div>
+{% else %}
+
+<!-- ===================== 1. Dataset Information ===================== -->
+<section class="section">
+    <h2>1. Dataset Information</h2>
+    <div class="stat-cards">
+        <div class="stat-card"><span class="stat-value">{{ info.n_rows }}</span><span class="stat-label">Rows</span></div>
+        <div class="stat-card"><span class="stat-value">{{ info.n_cols }}</span><span class="stat-label">Columns</span></div>
+        <div class="stat-card"><span class="stat-value">{{ info.memory_kb }}</span><span class="stat-label">Memory (KB)</span></div>
+    </div>
+    <div class="table-scroll">
+        <table class="data-table">
+            <thead><tr><th>Column</th><th>Data type</th><th>Non-null</th><th>Type</th></tr></thead>
+            <tbody>
+                {% for col in info.columns %}
+                <tr>
+                    <td>{{ col }}</td>
+                    <td>{{ info.dtypes[col] }}</td>
+                    <td>{{ info.non_null[col] }}</td>
+                    <td>
+                        {% if col in info.numeric_cols %}numeric
+                        {% elif col in info.categorical_cols %}categorical
+                        {% else %}datetime{% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- ===================== 2. Statistical Description ===================== -->
+<section class="section">
+    <h2>2. Statistical Description</h2>
+    <div class="table-scroll">
+        <table class="data-table">
+            <thead><tr>
+                <th>Column</th><th>Count</th><th>Mean</th><th>Std</th><th>Variance</th>
+                <th>Min</th><th>25%</th><th>Median</th><th>75%</th><th>Max</th>
+            </tr></thead>
+            <tbody>
+                {% for row in stats %}
+                <tr>
+                    <td>{{ row['column'] }}</td>
+                    <td>{{ row['count'] }}</td>
+                    <td>{{ row['mean'] }}</td>
+                    <td>{{ row['std'] }}</td>
+                    <td>{{ row['variance'] }}</td>
+                    <td>{{ row['min'] }}</td>
+                    <td>{{ row['25%'] }}</td>
+                    <td>{{ row['median'] }}</td>
+                    <td>{{ row['75%'] }}</td>
+                    <td>{{ row['max'] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- ===================== 3. Missing Values ===================== -->
+<section class="section">
+    <h2>3. Missing Values</h2>
+    <div class="stat-cards">
+        <div class="stat-card"><span class="stat-value">{{ missing_total }}</span><span class="stat-label">Total missing</span></div>
+    </div>
+    {% if missing %}
+    <div class="table-scroll">
+        <table class="data-table">
+            <thead><tr><th>Column</th><th>Missing count</th><th>Missing %</th></tr></thead>
+            <tbody>
+                {% for row in missing %}
+                <tr><td>{{ row['column'] }}</td><td>{{ row['count'] }}</td><td>{{ row['percent'] }}%</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="hint">No missing values in any column.</p>
+    {% endif %}
+</section>
+
+<!-- ===================== 4. Duplicate Values ===================== -->
+<section class="section">
+    <h2>4. Duplicate Values</h2>
+    <div class="stat-cards">
+        <div class="stat-card"><span class="stat-value">{{ duplicates }}</span><span class="stat-label">Duplicate rows</span></div>
+    </div>
+</section>
+
+<!-- ===================== 5. Unique Values ===================== -->
+<section class="section">
+    <h2>5. Unique Values</h2>
+    <div class="summary-grid">
+        <div class="summary-box">
+            <h3>Unique values per column</h3>
+            <table class="mini-table">
+                <tr><th>Column</th><th>Unique</th></tr>
+                {% for row in uniques %}
+                <tr><td>{{ row['column'] }}</td><td>{{ row['unique'] }}</td></tr>
+                {% endfor %}
+            </table>
+        </div>
+        <div class="summary-box">
+            <h3>Frequencies of categorical values</h3>
+            {% for cat in cat_frequencies %}
+                <h4>{{ cat['column'] }}</h4>
+                <table class="mini-table">
+                    <tr><th>Value</th><th>Count</th></tr>
+                    {% for v in cat['values'] %}
+                    <tr><td>{{ v['value'] }}</td><td>{{ v['count'] }}</td></tr>
+                    {% endfor %}
+                </table>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- ===================== 6. Numerical Analysis ===================== -->
+<section class="section">
+    <h2>6. Numerical Analysis</h2>
+    <p class="hint">Distribution and boxplots for numeric columns.</p>
+    <div class="chart-grid">
+        {% for p in plots if p.section == 'numerical' %}
+        <div class="chart-box">
+            <img src="{{ url_for('static', filename='plots/' ~ p.file) }}" alt="{{ p.title }}">
+            <p class="chart-caption">{{ p.title }}</p>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+
+<!-- ===================== 7. Categorical Analysis ===================== -->
+<section class="section">
+    <h2>7. Categorical Analysis</h2>
+    <p class="hint">Plots that compare categories / inspect category balance.</p>
+    <div class="chart-grid">
+        {% for p in plots if p.section == 'categorical' %}
+        <div class="chart-box">
+            <img src="{{ url_for('static', filename='plots/' ~ p.file) }}" alt="{{ p.title }}">
+            <p class="chart-caption">{{ p.title }}</p>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+
+<!-- ===================== 8. Outlier Analysis ===================== -->
+<section class="section">
+    <h2>8. Outlier Analysis (IQR method)</h2>
+    <p class="hint">1.5 x IQR rule. For zero-inflated solar columns the quartiles are
+    computed on daytime records (values &gt; 0) so the night zeros do not distort them.</p>
+    <div class="table-scroll">
+        <table class="data-table">
+            <thead><tr>
+                <th>Column</th><th>Q1</th><th>Q3</th><th>IQR</th>
+                <th>Lower fence</th><th>Upper fence</th><th>Outliers</th><th>% outliers</th><th>Evaluated on</th>
+            </tr></thead>
+            <tbody>
+                {% for row in outliers %}
+                <tr>
+                    <td>{{ row['column'] }}</td>
+                    <td>{{ row['q1'] }}</td>
+                    <td>{{ row['q3'] }}</td>
+                    <td>{{ row['iqr'] }}</td>
+                    <td>{{ row['lower_fence'] }}</td>
+                    <td>{{ row['upper_fence'] }}</td>
+                    <td>{{ row['n_outliers'] }}</td>
+                    <td>{{ row['pct_outliers'] }}%</td>
+                    <td>{{ row['evaluated_on'] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- ===================== 9. Correlation Matrix ===================== -->
+<section class="section">
+    <h2>9. Correlation Matrix</h2>
+    {% if correlation_matrix %}
+    <div class="table-scroll">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Column</th>
+                    {% for col in info.numeric_cols %}<th>{{ col }}</th>{% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for col in info.numeric_cols %}
+                <tr>
+                    <td>{{ col }}</td>
+                    {% for other in info.numeric_cols %}
+                    <td>{{ correlation_matrix[col][other] }}</td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="hint">Not enough numeric columns for a correlation matrix.</p>
+    {% endif %}
+</section>
+
+<!-- ===================== 10. Correlation Heatmap ===================== -->
+<section class="section">
+    <h2>10. Correlation Heatmap</h2>
+    <div class="chart-grid">
+        {% for p in plots if p.section == 'correlation' %}
+        <div class="chart-box">
+            <img src="{{ url_for('static', filename='plots/' ~ p.file) }}" alt="{{ p.title }}">
+            <p class="chart-caption">{{ p.title }}</p>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+
+<!-- ===================== 11. Target Variable Analysis ===================== -->
+{% if target %}
+<section class="section">
+    <h2>11. Target Variable Analysis</h2>
+    <div class="summary-box">
+        <p class="hint">{{ target.note }}</p>
+    </div>
+    <div class="stat-cards">
+        <div class="stat-card"><span class="stat-value">{{ target.stats.mean }}</span><span class="stat-label">Mean</span></div>
+        <div class="stat-card"><span class="stat-value">{{ target.stats.median }}</span><span class="stat-label">Median</span></div>
+        <div class="stat-card"><span class="stat-value">{{ target.stats.max }}</span><span class="stat-label">Max</span></div>
+        <div class="stat-card"><span class="stat-value">{{ target.stats.zero_share_pct }}%</span><span class="stat-label">Zero records</span></div>
+    </div>
+    {% if target.correlation_with_target %}
+    <div class="summary-box">
+        <h3>Correlation with {{ target.target }}</h3>
+        <table class="mini-table">
+            <tr><th>Feature</th><th>Correlation</th></tr>
+            {% for feature, corr in target.correlation_with_target.items() %}
+            <tr><td>{{ feature }}</td><td>{{ corr }}</td></tr>
+            {% endfor %}
+        </table>
+    </div>
+    {% endif %}
+    <div class="chart-grid">
+        {% for p in plots if p.section == 'target' %}
+        <div class="chart-box">
+            <img src="{{ url_for('static', filename='plots/' ~ p.file) }}" alt="{{ p.title }}">
+            <p class="chart-caption">{{ p.title }}</p>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+<!-- ===================== 12. Key EDA Findings ===================== -->
+<section class="section">
+    <h2>12. Key EDA Findings</h2>
+    <ul class="findings-list">
+        {% for finding in findings %}
+        <li>{{ finding }}</li>
+        {% endfor %}
+    </ul>
+</section>
+
+{% endif %}
+{% endblock %}

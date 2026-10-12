@@ -1,0 +1,327 @@
+/* ============================================================
+   SolarSense EDA - stylesheet
+   Clean, modern, responsive design for a college ML/EDA project
+   ============================================================ */
+
+:root {
+    --primary: #c96f11;
+    --primary-dark: #8a4b08;
+    --accent: #f2b134;
+    --bg: #f7f8fa;
+    --card-bg: #ffffff;
+    --text: #222831;
+    --muted: #6b7280;
+    --border: #e5e7eb;
+    --error-bg: #fdecea;
+    --error-text: #b3261e;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+}
+
+/* ---------- Navbar ---------- */
+.navbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    background: var(--primary-dark);
+    color: white;
+    padding: 0.9rem 2rem;
+}
+
+.nav-brand {
+    font-weight: 700;
+    font-size: 1.2rem;
+}
+
+.nav-links {
+    list-style: none;
+    display: flex;
+    gap: 1.5rem;
+    margin: 0;
+    padding: 0;
+}
+
+.nav-links a {
+    color: white;
+    text-decoration: none;
+    font-weight: 500;
+    opacity: 0.9;
+}
+
+.nav-links a:hover {
+    opacity: 1;
+    text-decoration: underline;
+}
+
+/* ---------- Content layout ---------- */
+.content {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.content h1 {
+    color: var(--primary-dark);
+}
+
+.hero {
+    text-align: center;
+    padding: 2rem 1rem 1rem;
+}
+
+.hero h1 {
+    color: var(--primary-dark);
+    margin-bottom: 0.5rem;
+}
+
+.hero p {
+    color: var(--muted);
+    max-width: 720px;
+    margin: 0 auto;
+}
+
+/* ---------- Cards ---------- */
+.card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1.25rem;
+    margin: 2rem 0;
+}
+
+.card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.25rem;
+    text-decoration: none;
+    color: var(--text);
+    transition: box-shadow 0.15s ease, transform 0.15s ease;
+    display: block;
+}
+
+.card:hover {
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+    transform: translateY(-2px);
+}
+
+.card h2 {
+    margin-top: 0;
+    color: var(--primary);
+    font-size: 1.1rem;
+}
+
+.card p {
+    color: var(--muted);
+    font-size: 0.92rem;
+}
+
+.dataset-note {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+}
+
+.dataset-note h3 {
+    color: var(--primary-dark);
+    margin-top: 0;
+}
+
+/* ---------- Summary grid / boxes ---------- */
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.25rem;
+    margin: 1.5rem 0;
+}
+
+.summary-box {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.1rem 1.25rem;
+}
+
+.summary-box h3 {
+    margin-top: 0;
+    color: var(--primary-dark);
+}
+
+.summary-box h4 {
+    margin: 0.9rem 0 0.4rem;
+    color: var(--primary);
+    font-size: 0.95rem;
+}
+
+.big-stat {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--primary);
+    margin: 0.25rem 0 0;
+}
+
+.hint {
+    color: var(--muted);
+    font-size: 0.88rem;
+}
+
+/* ---------- Stat cards ---------- */
+.stat-cards {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin: 1rem 0 1.5rem;
+}
+
+.stat-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1.5rem;
+    min-width: 130px;
+    text-align: center;
+}
+
+.stat-value {
+    display: block;
+    font-size: 1.7rem;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.stat-label {
+    color: var(--muted);
+    font-size: 0.85rem;
+}
+
+/* ---------- Tables ---------- */
+.table-scroll {
+    overflow-x: auto;
+    margin-bottom: 2rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+}
+
+.data-table, .mini-table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 0.85rem;
+    background: var(--card-bg);
+}
+
+.data-table th, .data-table td,
+.mini-table th, .mini-table td {
+    padding: 0.5rem 0.7rem;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+    white-space: nowrap;
+}
+
+.data-table thead, .mini-table thead {
+    background: var(--primary);
+    color: white;
+}
+
+.mini-table {
+    margin-top: 0.5rem;
+}
+
+/* ---------- Charts ---------- */
+.chart-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+    gap: 1.25rem;
+    margin-bottom: 2rem;
+}
+
+.chart-box {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.75rem;
+}
+
+.chart-box img {
+    width: 100%;
+    height: auto;
+    border-radius: 6px;
+}
+
+.chart-caption {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.85rem;
+    margin: 0.5rem 0 0.25rem;
+}
+
+/* ---------- Sections ---------- */
+.section {
+    margin: 2.5rem 0;
+}
+
+.section h2 {
+    color: var(--primary-dark);
+    border-bottom: 2px solid var(--border);
+    padding-bottom: 0.4rem;
+}
+
+/* ---------- Findings ---------- */
+.findings-list {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.2rem 1.5rem 1.2rem 2.4rem;
+}
+
+.findings-list li {
+    margin-bottom: 0.7rem;
+    line-height: 1.5;
+}
+
+/* ---------- Alerts ---------- */
+.alert {
+    padding: 1rem 1.25rem;
+    border-radius: 8px;
+    margin: 1.5rem 0;
+}
+
+.alert-error {
+    background: var(--error-bg);
+    color: var(--error-text);
+    border: 1px solid #f5c6c2;
+}
+
+/* ---------- Footer ---------- */
+.footer {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.8rem;
+    padding: 1.5rem;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 640px) {
+    .navbar {
+        flex-direction: column;
+        gap: 0.6rem;
+        text-align: center;
+    }
+
+    .nav-links {
+        gap: 1rem;
+    }
+
+    .content {
+        padding: 1rem;
+    }
+}
