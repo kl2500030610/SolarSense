@@ -205,6 +205,93 @@ def predict_ensemble():
         return jsonify({"status": "error", "message": str(exc)}), 400
 
 
+@app.route("/manual_prediction", methods=["GET"])
+def manual_prediction_page():
+    """Show the manual prediction form."""
+    try:
+        df = load_data()
+        plant_ids = get_plant_ids(df)
+        return render_template(
+            "manual_prediction.html",
+            dataset_name=DATASET_NAME,
+            plant_ids=plant_ids,
+        )
+    except FileNotFoundError as err:
+        return render_template(
+            "manual_prediction.html",
+            dataset_name=DATASET_NAME,
+            plant_ids=[],
+            error=str(err),
+        )
+
+
+@app.route("/manual_prediction/predict", methods=["POST"])
+def manual_prediction_predict():
+    """Validate inputs and return a model prediction."""
+    import math
+
+    try:
+        data = request.get_json(force=True)
+    except Exception:
+        return jsonify({"status": "error", "message": "Invalid JSON body."}), 400
+
+    model = data.get("model", "")
+    if model not in ("regression", "ensemble"):
+        return jsonify({"status": "error",
+                        "message": "Invalid model selection. Choose 'regression' or 'ensemble'."}), 400
+
+    required = {
+        "plant_id": str(data.get("plant_id", "")).strip(),
+        "ambient_temperature": data.get("ambient_temperature"),
+        "module_temperature": data.get("module_temperature"),
+        "irradiation": data.get("irradiation"),
+    }
+
+    missing = [k for k, v in required.items() if v is None or (isinstance(v, str) and not v)]
+    if missing:
+        return jsonify({"status": "error",
+                        "message": f"Missing required fields: {', '.join(missing)}"}), 400
+
+    numeric = {}
+    for key in ("ambient_temperature", "module_temperature", "irradiation"):
+        raw = required[key]
+        try:
+            val = float(raw)
+        except (TypeError, ValueError):
+            return jsonify({"status": "error",
+                            "message": f"'{key}' must be a valid number, got '{raw}'."}), 400
+        if math.isnan(val) or math.isinf(val):
+            return jsonify({"status": "error",
+                            "message": f"'{key}' must be a finite number."}), 400
+        numeric[key] = val
+
+    plant_id = required["plant_id"]
+
+    if model == "regression":
+        pred_fn = predict_single
+    else:
+        pred_fn = predict_single_ensemble
+
+    try:
+        pred = pred_fn(
+            ambient_temp=numeric["ambient_temperature"],
+            module_temp=numeric["module_temperature"],
+            irradiation=numeric["irradiation"],
+            plant_id=plant_id,
+        )
+    except FileNotFoundError as exc:
+        return jsonify({"status": "error", "message": str(exc)}), 503
+    except Exception as exc:
+        return jsonify({"status": "error",
+                        "message": f"Prediction failed: {exc}"}), 500
+
+    return jsonify({
+        "status": "ok",
+        "prediction": pred,
+        "model": "Regression" if model == "regression" else "Ensemble",
+    })
+
+
 @app.route("/unsupervised", methods=["GET"])
 def unsupervised_page():
     """Show the unsupervised learning page.

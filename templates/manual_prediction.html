@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block title %}Manual Prediction{% endblock %}
+
+{% block content %}
+<h1>Manual Prediction</h1>
+
+<p class="hint">
+    Enter environmental conditions to predict <strong>AC_POWER</strong> (kW) using
+    a trained model. Select a model, fill in the fields, and click Predict.
+</p>
+
+{% if error %}
+<div class="alert alert-error">
+    <strong>Error:</strong> {{ error }}
+</div>
+{% endif %}
+
+<div class="summary-grid">
+    <div class="summary-box">
+        <h3>Input Parameters</h3>
+        <form id="predict-form" onsubmit="return false;">
+            <div style="margin-top:0.8rem;">
+                <label style="display:block; font-weight:600; margin-bottom:0.3rem; font-size:0.9rem;">Model</label>
+                <select id="model" style="width:100%; padding:0.5rem; border:1px solid #e5e7eb; border-radius:6px; font-size:0.9rem;">
+                    <option value="regression">Regression (Linear / Ridge / RandomForest)</option>
+                    <option value="ensemble">Ensemble (RandomForest / XGBoost / DecisionTree / AdaBoost)</option>
+                </select>
+                <p class="hint" style="margin-top:0.3rem;">Both models are trained on the same dataset and features.</p>
+            </div>
+
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; margin-top: 0.8rem;">
+                <div>
+                    <label style="display:block; font-weight:600; margin-bottom:0.3rem; font-size:0.9rem;">Plant ID</label>
+                    <select id="plant_id" style="width:100%; padding:0.5rem; border:1px solid #e5e7eb; border-radius:6px; font-size:0.9rem;">
+                        {% for pid in plant_ids %}
+                        <option value="{{ pid }}">{{ pid }}</option>
+                        {% endfor %}
+                    </select>
+                    <p class="hint" style="margin-top:0.2rem;">4135001 = Plant 1, 4136001 = Plant 2</p>
+                </div>
+                <div>
+                    <label style="display:block; font-weight:600; margin-bottom:0.3rem; font-size:0.9rem;">Irradiation (W/m²)</label>
+                    <input type="number" id="irradiation" step="0.01" min="0" max="1.5" value="0.5"
+                           style="width:100%; padding:0.5rem; border:1px solid #e5e7eb; border-radius:6px; font-size:0.9rem;">
+                    <p class="hint" style="margin-top:0.2rem;">Typical range: 0 – 1.22 W/m²</p>
+                </div>
+                <div>
+                    <label style="display:block; font-weight:600; margin-bottom:0.3rem; font-size:0.9rem;">Module Temperature (°C)</label>
+                    <input type="number" id="module_temperature" step="0.1" min="10" max="80" value="30.0"
+                           style="width:100%; padding:0.5rem; border:1px solid #e5e7eb; border-radius:6px; font-size:0.9rem;">
+                    <p class="hint" style="margin-top:0.2rem;">Typical range: 18 – 67 °C</p>
+                </div>
+                <div>
+                    <label style="display:block; font-weight:600; margin-bottom:0.3rem; font-size:0.9rem;">Ambient Temperature (°C)</label>
+                    <input type="number" id="ambient_temperature" step="0.1" min="10" max="50" value="25.0"
+                           style="width:100%; padding:0.5rem; border:1px solid #e5e7eb; border-radius:6px; font-size:0.9rem;">
+                    <p class="hint" style="margin-top:0.2rem;">Typical range: 20 – 39 °C</p>
+                </div>
+            </div>
+
+            <button type="button" id="predict-btn" onclick="makePrediction()"
+                    style="margin-top:1rem; padding:0.7rem 2rem; background:#c96f11; color:white; border:none; border-radius:8px; font-weight:600; cursor:pointer; font-size:1rem;">
+                Predict
+            </button>
+        </form>
+    </div>
+
+    <div class="summary-box" id="prediction-result" style="display:flex; align-items:center; justify-content:center; flex-direction:column;">
+        <h3>Prediction</h3>
+        <p id="pred-value" style="font-size:2rem; font-weight:700; color:#c96f11; margin:0.5rem 0;">—</p>
+        <p id="pred-unit" class="hint">AC_POWER (kW)</p>
+        <p id="pred-error" class="hint" style="color:#b3261e; display:none;"></p>
+    </div>
+</div>
+
+<div id="prediction-summary" class="summary-box" style="display:none; margin-top:1.5rem;">
+    <h3>Prediction Summary</h3>
+    <div id="summary-content" style="margin-top:0.5rem; font-size:0.9rem; line-height:1.6;"></div>
+</div>
+
+<script>
+async function makePrediction() {
+    const btn = document.getElementById('predict-btn');
+    const predValue = document.getElementById('pred-value');
+    const predError = document.getElementById('pred-error');
+    const summaryBox = document.getElementById('prediction-summary');
+    const summaryContent = document.getElementById('summary-content');
+
+    btn.disabled = true;
+    btn.textContent = 'Predicting...';
+    predError.style.display = 'none';
+    predValue.textContent = '—';
+    summaryBox.style.display = 'none';
+
+    const payload = {
+        model: document.getElementById('model').value,
+        plant_id: document.getElementById('plant_id').value,
+        ambient_temperature: parseFloat(document.getElementById('ambient_temperature').value),
+        module_temperature: parseFloat(document.getElementById('module_temperature').value),
+        irradiation: parseFloat(document.getElementById('irradiation').value),
+    };
+
+    try {
+        const resp = await fetch('/manual_prediction/predict', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+        const data = await resp.json();
+        if (data.status === 'ok') {
+            predValue.textContent = data.prediction.toFixed(4);
+            summaryContent.innerHTML = `
+                <strong>Model:</strong> ${data.model}<br>
+                <strong>Predicted AC_POWER:</strong> ${data.prediction.toFixed(4)} kW<br>
+                <strong>Plant ID:</strong> ${payload.plant_id}<br>
+                <strong>Irradiation:</strong> ${payload.irradiation} W/m²<br>
+                <strong>Module Temperature:</strong> ${payload.module_temperature} °C<br>
+                <strong>Ambient Temperature:</strong> ${payload.ambient_temperature} °C<br>
+                <br>
+                <span class="hint">This is a model prediction, not a measured value. Accuracy depends on how representative the input conditions are of the training data.</span>
+            `;
+            summaryBox.style.display = 'block';
+        } else {
+            predError.textContent = data.message || 'Prediction failed.';
+            predError.style.display = 'block';
+        }
+    } catch (e) {
+        predError.textContent = 'Network error: ' + e.message;
+        predError.style.display = 'block';
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Predict';
+}
+</script>
+{% endblock %}
